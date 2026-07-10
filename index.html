@@ -50,16 +50,19 @@
 
   /*
    * The shell is the box Rocketlane actually sees (target 1080 x 600,
-   * landscape). It resizes via JS (fitShell()) to whatever space is
-   * available while always keeping the 1080:600 ratio.
+   * landscape). Its size is decided by CSS alone — min() picks whichever
+   * of "full viewport width", "1080px", or "the width that 100vh would
+   * give at a 1080:600 ratio" is smallest, and aspect-ratio locks the
+   * shape to landscape no matter what. This does NOT depend on any JS
+   * running correctly, so it can't silently end up portrait.
    * Inside it, .stage is a FIXED 1080x600 canvas that gets CSS-scaled
-   * to fit the shell — so every page is designed once, at one size,
-   * and just scales as a block. No responsive font-size guesswork.
+   * (via JS + ResizeObserver, see below) to fit the shell — so every
+   * page is designed once, at one size, and just scales as a block.
    */
   .flipbook-shell {
     position: relative;
-    width: 1080px;
-    height: 600px;
+    width: min(100vw, 1080px, calc(100vh * 1.8));
+    aspect-ratio: 1080 / 600;
     background: var(--white);
     border-radius: 20px;
     overflow: hidden;
@@ -512,17 +515,39 @@ function normaliseResponsePayload(payload) {
 }
 
 /* ---------- Data loading: fetch first, JSONP fallback ---------- */
+
+/**
+ * Turns a raw Code.gs response into a rules array, but FIRST checks for
+ * success === false (a real backend error — wrong sheet name, sheet not
+ * found, etc.) and throws a proper error with that message attached, so
+ * the UI can show the real cause instead of a generic "no rules yet".
+ * Always logs the raw payload too, so anyone debugging can see exactly
+ * what Code.gs returned.
+ */
+function processPayload(payload) {
+  console.log('Accounting onboarding — raw response from Code.gs:', payload);
+
+  if (payload && payload.success === false) {
+    const err = new Error(payload.error || 'The sheet reported an error.');
+    err.isBackendError = true;
+    throw err;
+  }
+
+  return normaliseResponsePayload(payload);
+}
+
 function loadData() {
   if (CONFIG.useSampleData) {
     return Promise.resolve(SAMPLE_DATA.map(normaliseRuleObject));
   }
 
   return fetchWithTimeout(CONFIG.webAppUrl, CONFIG.fetchTimeoutMs)
-    .then(function (payload) { return normaliseResponsePayload(payload); })
+    .then(processPayload)
     .catch(function (fetchErr) {
+      if (fetchErr && fetchErr.isBackendError) throw fetchErr;
       console.warn('fetch() failed, falling back to JSONP:', fetchErr);
       return loadViaJsonp(CONFIG.webAppUrl, CONFIG.jsonpTimeoutMs)
-        .then(function (payload) { return normaliseResponsePayload(payload); });
+        .then(processPayload);
     });
 }
 
@@ -826,36 +851,29 @@ function showError(message) {
 
 /* ============================================================================
  * STAGE SCALING
- * The shell resizes to fit the viewport/iframe while keeping the 1080:600
- * ratio; the fixed-size stage is then CSS-scaled as a single block to match.
- * This keeps every page pixel-perfect regardless of embed size, and means
- * pagination measurements never need to account for the device at all.
+ * The shell's on-screen size is decided entirely by CSS (min()/aspect-ratio
+ * on .flipbook-shell guarantees a landscape 1080:600 box regardless of
+ * viewport). This JS just watches that box with a ResizeObserver and scales
+ * the fixed-size 1080x600 .stage to match, so pagination measurements never
+ * need to account for the device at all — .stage is always 1080x600 pre-scale.
  * ============================================================================ */
-function fitShell() {
+function scaleStageToShell() {
   const shell = document.getElementById('shell');
   const stage = document.getElementById('stage');
-  const ratio = CONFIG.stageWidth / CONFIG.stageHeight;
-
-  const availW = window.innerWidth;
-  const availH = window.innerHeight;
-
-  let w = Math.min(availW, CONFIG.stageWidth);
-  let h = w / ratio;
-
-  if (h > Math.min(availH, CONFIG.stageHeight)) {
-    h = Math.min(availH, CONFIG.stageHeight);
-    w = h * ratio;
-  }
-
-  shell.style.width = w + 'px';
-  shell.style.height = h + 'px';
-  stage.style.transform = 'scale(' + (w / CONFIG.stageWidth) + ')';
+  const scale = shell.clientWidth / CONFIG.stageWidth;
+  stage.style.transform = 'scale(' + scale + ')';
 }
 
 function init() {
-  fitShell();
-  window.addEventListener('resize', fitShell);
-  window.addEventListener('orientationchange', fitShell);
+  const shell = document.getElementById('shell');
+  scaleStageToShell();
+
+  if (window.ResizeObserver) {
+    new ResizeObserver(scaleStageToShell).observe(shell);
+  } else {
+    window.addEventListener('resize', scaleStageToShell);
+    window.addEventListener('orientationchange', scaleStageToShell);
+  }
 
   attachNav();
   document.getElementById('retry-btn').addEventListener('click', function () {
@@ -911,7 +929,12 @@ function boot() {
     })
     .catch(function (err) {
       console.error('Failed to load accounting onboarding rules:', err);
-      showError('We couldn\'t load the latest rules right now. Please check your connection and try again.');
+      if (err && err.isBackendError) {
+        // A real Code.gs error (wrong sheet name, sheet not found, etc.) — show it directly, it's actionable.
+        showError(err.message);
+      } else {
+        showError('We couldn\'t load the latest rules right now. Please check your connection and try again.');
+      }
     });
 }
 
