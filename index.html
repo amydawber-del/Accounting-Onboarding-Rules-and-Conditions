@@ -925,6 +925,15 @@ function init() {
 function boot() {
   loadData()
     .then(function (rules) {
+      // Wait for the DM Sans web font to actually finish loading before we
+      // measure anything. If we measure while the fallback system font is
+      // still showing, text can wrap differently once DM Sans swaps in a
+      // moment later — making cards taller than what we budgeted for, which
+      // is what was pushing notes/warnings past the bottom of the page.
+      const fontsReady = (document.fonts && document.fonts.ready) ? document.fonts.ready : Promise.resolve();
+      return fontsReady.then(function () { return rules; });
+    })
+    .then(function (rules) {
       if (!rules.length) {
         showError('No active rules were found in the sheet yet. Please check back shortly, or contact the Street team.');
         return;
@@ -938,7 +947,7 @@ function boot() {
       const chrome = measureChromeHeights();
       const pagePaddingTop = 30;
       const pagePaddingBottom = 12;
-      const SAFETY_MARGIN = 8;
+      const SAFETY_MARGIN = 16;
       const availableHeight = CONFIG.stageHeight - chrome.footerHeight - pagePaddingTop - pagePaddingBottom - chrome.eyebrowHeight - SAFETY_MARGIN;
       const gridWidth = CONFIG.stageWidth - (46 * 2); // matches .page horizontal padding
 
