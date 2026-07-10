@@ -447,8 +447,8 @@ const CONFIG = {
   sheetName: "Rules & Conditions",
   bookTitle: "Accounting Onboarding Rules & Conditions",
   useSampleData: false,
-  jsonpTimeoutMs: 8000,
-  fetchTimeoutMs: 6000,
+  jsonpTimeoutMs: 20000,
+  fetchTimeoutMs: 12000,
   stageWidth: 1080,
   stageHeight: 600
 };
@@ -580,7 +580,11 @@ function loadViaJsonp(url, timeoutMs) {
     let settled = false;
 
     const cleanup = function () {
-      delete window[cbName];
+      // Replaced with a no-op rather than deleted: if the response arrives
+      // late (after we've already timed out and moved on, e.g. during an
+      // Apps Script cold start), it calls a harmless function instead of
+      // throwing a ReferenceError in the console.
+      window[cbName] = function () {};
       if (script.parentNode) script.parentNode.removeChild(script);
       clearTimeout(timer);
     };
