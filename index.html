@@ -775,6 +775,7 @@ function paginateRules(rules, availableHeight, gridWidth) {
   const rig = document.getElementById('measure-rig');
   const GAP_X = 18;
   const GAP_Y = 12;
+  const CARD_MEASURE_BUFFER = 14; // extra headroom per card against sub-pixel/rendering rounding
   const halfWidth = (gridWidth - GAP_X) / 2;
 
   function measureAt(rule, index, width) {
@@ -786,7 +787,7 @@ function paginateRules(rules, availableHeight, gridWidth) {
     const wrapper = document.createElement('div');
     wrapper.innerHTML = buildRuleCardHtml(rule, index, singleCol, width !== halfWidth);
     rig.appendChild(wrapper);
-    const height = wrapper.offsetHeight; // offsetHeight ignores CSS transforms, so this is always a true 1:1 measurement
+    const height = wrapper.offsetHeight + CARD_MEASURE_BUFFER; // offsetHeight ignores CSS transforms, so this is always a true 1:1 measurement; buffer covers sub-pixel/line-height rounding differences between the measuring rig and the real render
     rig.removeChild(wrapper);
     return { rule: rule, index: index, singleCol: singleCol, height: height };
   }
@@ -976,7 +977,7 @@ function boot() {
       const chrome = measureChromeHeights();
       const pagePaddingTop = 30;
       const pagePaddingBottom = 12;
-      const SAFETY_MARGIN = 16;
+      const SAFETY_MARGIN = 36;
       const availableHeight = CONFIG.stageHeight - chrome.footerHeight - pagePaddingTop - pagePaddingBottom - chrome.eyebrowHeight - SAFETY_MARGIN;
       const gridWidth = CONFIG.stageWidth - (46 * 2); // matches .page horizontal padding
 
