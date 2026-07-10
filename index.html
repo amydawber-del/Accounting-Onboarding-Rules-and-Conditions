@@ -48,23 +48,35 @@
     justify-content: center;
   }
 
+  /*
+   * The shell is the box Rocketlane actually sees (target 1080 x 600,
+   * landscape). It resizes via JS (fitShell()) to whatever space is
+   * available while always keeping the 1080:600 ratio.
+   * Inside it, .stage is a FIXED 1080x600 canvas that gets CSS-scaled
+   * to fit the shell — so every page is designed once, at one size,
+   * and just scales as a block. No responsive font-size guesswork.
+   */
   .flipbook-shell {
     position: relative;
-    width: min(100vw, 600px);
-    height: min(100vh, 1080px);
-    max-width: 600px;
-    max-height: 1080px;
-    aspect-ratio: 600 / 1080;
+    width: 1080px;
+    height: 600px;
     background: var(--white);
-    border-radius: 22px;
+    border-radius: 20px;
     overflow: hidden;
     box-shadow: var(--shadow);
-    display: flex;
-    flex-direction: column;
+  }
+  @media (max-width: 1080px), (max-height: 600px) {
+    .flipbook-shell { border-radius: 0; box-shadow: none; }
   }
 
-  @media (max-width: 600px), (max-height: 1080px) {
-    .flipbook-shell { border-radius: 0; box-shadow: none; }
+  .stage {
+    position: absolute;
+    top: 0; left: 0;
+    width: 1080px;
+    height: 600px;
+    transform-origin: top left;
+    display: flex;
+    flex-direction: column;
   }
 
   /* ---------- Page stack ---------- */
@@ -80,9 +92,9 @@
     inset: 0;
     display: flex;
     flex-direction: column;
-    padding: clamp(20px, 5.5%, 34px) clamp(18px, 5%, 30px) 14px;
+    padding: 30px 46px 12px;
     opacity: 0;
-    transform: translateX(24px);
+    transform: translateX(28px);
     transition: opacity 320ms ease, transform 320ms ease;
     pointer-events: none;
   }
@@ -91,18 +103,10 @@
     transform: translateX(0);
     pointer-events: auto;
   }
-  .page.exit-left { transform: translateX(-24px); }
+  .page.exit-left { transform: translateX(-28px); }
 
   @media (prefers-reduced-motion: reduce) {
     .page { transition: opacity 160ms linear; transform: none !important; }
-  }
-
-  .page-scroll-guard {
-    flex: 1 1 auto;
-    min-height: 0;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
   }
 
   /* ---------- Shared type ---------- */
@@ -115,7 +119,7 @@
     margin: 0 0 6px;
   }
   h1.page-title {
-    font-size: clamp(24px, 6.2vw, 30px);
+    font-size: 27px;
     line-height: 1.15;
     font-weight: 700;
     color: var(--navy);
@@ -128,25 +132,27 @@
     margin: 0 0 14px;
   }
 
-  /* ---------- Cover page ---------- */
+  /* ---------- Cover page (landscape: text left, questions right) ---------- */
+  .cover-flex { display: flex; gap: 40px; height: 100%; align-items: center; }
+  .cover-left { flex: 1.35; display: flex; flex-direction: column; }
+  .cover-right { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 14px; }
   .cover-word { font-size: 13px; font-weight: 700; letter-spacing: 0.06em; color: var(--navy); }
   .cover-word span { color: #7C6FE0; }
   .cover-questions {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 8px;
-    margin: 14px 0;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
   }
   .cover-q {
     background: var(--lavender);
     border-radius: var(--radius-sm);
-    padding: 10px 6px;
+    padding: 12px 8px;
     text-align: center;
   }
-  .cover-q .letter { font-size: 15px; font-weight: 700; color: var(--navy); }
-  .cover-q .label { font-size: 10px; color: var(--grey); margin-top: 2px; }
+  .cover-q .letter { font-size: 17px; font-weight: 700; color: var(--navy); }
+  .cover-q .label { font-size: 11px; color: var(--grey); margin-top: 2px; }
   .cover-callout {
-    margin-top: auto;
+    margin-top: 16px;
     background: var(--blue-pale);
     border-radius: var(--radius-sm);
     padding: 12px 14px;
@@ -155,14 +161,21 @@
     font-weight: 500;
   }
   .cover-cta {
-    margin-top: 10px;
     font-size: 12px;
     color: var(--grey-light);
     text-align: center;
   }
 
-  /* ---------- Rule cards ---------- */
-  .rules-scroll { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 12px; overflow: hidden; }
+  /* ---------- Rule pages: 2-up card grid, using the extra landscape width ---------- */
+  .rules-grid {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px 18px;
+    align-content: start;
+    overflow: hidden;
+  }
   .rule-card {
     background: var(--white);
     border: 1px solid var(--border);
@@ -170,6 +183,7 @@
     padding: 12px 14px;
     box-shadow: var(--shadow);
   }
+  .rule-card.rule-card-solo { grid-column: 1 / -1; }
   .rule-head { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 8px; }
   .rule-badge {
     flex: none;
@@ -181,19 +195,19 @@
     font-weight: 700;
     display: flex; align-items: center; justify-content: center;
   }
-  .rule-name { font-size: 15px; font-weight: 700; color: var(--navy); line-height: 1.3; }
+  .rule-name { font-size: 14.5px; font-weight: 700; color: var(--navy); line-height: 1.3; }
   .rule-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 8px 10px;
   }
   .rule-grid.single-col { grid-template-columns: 1fr; }
-  .rule-field { font-size: 12.5px; line-height: 1.45; color: var(--ink); }
-  .rule-field .fk { display: flex; align-items: center; gap: 5px; font-weight: 700; color: var(--grey); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 2px; }
+  .rule-field { font-size: 12px; line-height: 1.45; color: var(--ink); }
+  .rule-field .fk { display: flex; align-items: center; gap: 5px; font-weight: 700; color: var(--grey); font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 2px; }
   .rule-field .ic { width: 13px; height: 13px; flex: none; }
   .rule-note {
     margin-top: 8px;
-    font-size: 12px;
+    font-size: 11.5px;
     color: var(--grey);
     background: var(--lavender);
     border-radius: 10px;
@@ -204,7 +218,7 @@
     margin-top: 8px;
     display: flex;
     gap: 8px;
-    font-size: 12px;
+    font-size: 11.5px;
     color: #6B5518;
     background: var(--warning-bg);
     border: 1px solid var(--warning-border);
@@ -215,53 +229,69 @@
   }
   .rule-warning .ic { flex: none; width: 15px; height: 15px; margin-top: 1px; }
 
-  /* ---------- Reminder page ---------- */
-  .reminder-list { display: flex; flex-direction: column; gap: 8px; margin: 4px 0 12px; }
+  /* ---------- Reminder page (landscape: 2-col list + side panel) ---------- */
+  .reminder-body { display: flex; gap: 26px; flex: 1 1 auto; min-height: 0; }
+  .reminder-list {
+    flex: 1.25;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 12px;
+    align-content: start;
+  }
   .reminder-item {
     display: flex; gap: 8px; align-items: flex-start;
-    font-size: 13px; color: var(--ink); line-height: 1.45;
+    font-size: 12.5px; color: var(--ink); line-height: 1.45;
     background: var(--blue-pale);
     border-radius: 10px;
     padding: 9px 10px;
   }
   .reminder-item .ic { flex: none; width: 15px; height: 15px; margin-top: 1px; }
+  .reminder-side {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 12px;
+  }
   .reminder-stop {
-    margin-top: auto;
     background: var(--navy);
     color: #fff;
     border-radius: var(--radius-sm);
-    padding: 12px 14px;
+    padding: 14px 16px;
     font-size: 13px;
     font-weight: 600;
     line-height: 1.4;
   }
   .reminder-warning {
-    margin-top: 8px;
     font-size: 12px;
     color: #6B5518;
     background: var(--warning-bg);
     border: 1px solid var(--warning-border);
     border-radius: 10px;
-    padding: 9px 10px;
+    padding: 10px 12px;
     line-height: 1.4;
   }
 
-  /* ---------- Final page ---------- */
-  .final-wrap { display:flex; flex-direction:column; height:100%; }
+  /* ---------- Final page (landscape: copy left, closing right) ---------- */
+  .final-flex { display: flex; gap: 40px; height: 100%; align-items: center; }
+  .final-left { flex: 1.4; }
   .final-copy { font-size: 14px; color: var(--ink); line-height: 1.55; margin-bottom: 12px; }
-  .final-closing {
-    margin-top: auto;
+  .final-right {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
     text-align: center;
   }
-  .final-closing .word { font-size: 13px; font-weight: 700; color: var(--navy); letter-spacing: 0.06em; }
+  .final-right .word { font-size: 15px; font-weight: 700; color: var(--navy); letter-spacing: 0.06em; }
   .restart-btn {
-    margin-top: 12px;
-    align-self: center;
     background: var(--lavender);
     color: var(--navy);
     border: none;
     border-radius: 999px;
-    padding: 9px 18px;
+    padding: 10px 20px;
     font-family: var(--font);
     font-size: 13px;
     font-weight: 600;
@@ -272,7 +302,7 @@
   /* ---------- Footer / nav ---------- */
   .footer {
     flex: none;
-    padding: 10px clamp(18px, 5%, 30px) clamp(14px, 4%, 20px);
+    padding: 10px 46px 18px;
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -303,12 +333,12 @@
     color: var(--navy);
     border: none;
     border-radius: 999px;
-    padding: 9px 16px;
+    padding: 9px 18px;
     font-family: var(--font);
     font-size: 13px;
     font-weight: 600;
     cursor: pointer;
-    min-width: 84px;
+    min-width: 90px;
     justify-content: center;
   }
   .nav-btn:disabled { opacity: 0.35; cursor: default; }
@@ -335,7 +365,7 @@
   @media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 1600ms; } }
   @keyframes spin { to { transform: rotate(360deg); } }
   .state-title { font-size: 15px; font-weight: 700; color: var(--navy); }
-  .state-copy { font-size: 13px; color: var(--grey); line-height: 1.5; max-width: 380px; }
+  .state-copy { font-size: 13px; color: var(--grey); line-height: 1.5; max-width: 420px; }
   .retry-btn {
     background: var(--navy); color: #fff; border: none; border-radius: 999px;
     padding: 10px 20px; font-family: var(--font); font-weight: 600; font-size: 13px; cursor: pointer;
@@ -344,51 +374,52 @@
 
   .hidden { display: none !important; }
 
-  /* off-screen measuring rig, matches the width of a rule page's rules-scroll column */
+  /* Off-screen measuring rig — a sibling of .stage, NOT scaled, so
+     measurements are always taken at true 1:1 pixel size regardless
+     of how small the shell has been scaled down to fit the screen. */
   #measure-rig {
     position: absolute;
     visibility: hidden;
     pointer-events: none;
     left: -9999px;
     top: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
   }
 </style>
 </head>
 <body>
 <div id="root">
   <div class="flipbook-shell" id="shell" role="region" aria-roledescription="carousel" aria-label="Accounting Onboarding Rules & Conditions guide">
+    <div class="stage" id="stage">
 
-    <div class="page-viewport" id="viewport">
-      <!-- Loading state -->
-      <div class="state-screen" id="state-loading">
-        <div class="spinner" aria-hidden="true"></div>
-        <div class="state-title">Loading your accounting onboarding guide&hellip;</div>
+      <div class="page-viewport" id="viewport">
+        <!-- Loading state -->
+        <div class="state-screen" id="state-loading">
+          <div class="spinner" aria-hidden="true"></div>
+          <div class="state-title">Loading your accounting onboarding guide&hellip;</div>
+        </div>
+
+        <!-- Error state -->
+        <div class="state-screen hidden" id="state-error">
+          <div class="state-title">We couldn't load this guide</div>
+          <div class="state-copy" id="error-copy">Something went wrong while loading the latest rules. Please try again in a moment.</div>
+          <button class="retry-btn" id="retry-btn" type="button">Retry</button>
+        </div>
+
+        <!-- Pages get injected here once data has loaded -->
+        <div id="pages-host" aria-live="polite"></div>
       </div>
 
-      <!-- Error state -->
-      <div class="state-screen hidden" id="state-error">
-        <div class="state-title">We couldn't load this guide</div>
-        <div class="state-copy" id="error-copy">Something went wrong while loading the latest rules. Please try again in a moment.</div>
-        <button class="retry-btn" id="retry-btn" type="button">Retry</button>
+      <!-- Footer / navigation, only shown once content has loaded -->
+      <div class="footer hidden" id="footer">
+        <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+        <div class="nav-row">
+          <button class="nav-btn" id="prev-btn" type="button" aria-label="Previous page">&larr; Prev</button>
+          <span class="page-count" id="page-count">1 of 1</span>
+          <button class="nav-btn" id="next-btn" type="button" aria-label="Next page">Next &rarr;</button>
+        </div>
       </div>
 
-      <!-- Pages get injected here once data has loaded -->
-      <div id="pages-host" aria-live="polite"></div>
     </div>
-
-    <!-- Footer / navigation, only shown once content has loaded -->
-    <div class="footer hidden" id="footer">
-      <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
-      <div class="nav-row">
-        <button class="nav-btn" id="prev-btn" type="button" aria-label="Previous page">&larr; Prev</button>
-        <span class="page-count" id="page-count">1 of 1</span>
-        <button class="nav-btn" id="next-btn" type="button" aria-label="Next page">Next &rarr;</button>
-      </div>
-    </div>
-
   </div>
 </div>
 
@@ -407,12 +438,15 @@ const CONFIG = {
   bookTitle: "Accounting Onboarding Rules & Conditions",
   useSampleData: false,
   jsonpTimeoutMs: 8000,
-  fetchTimeoutMs: 6000
+  fetchTimeoutMs: 6000,
+  stageWidth: 1080,
+  stageHeight: 600
 };
 
 const SAMPLE_DATA = [
   { ruleName: "Follow the project board in order", who: "Everyone involved in the accounting onboarding project", what: "Complete each task in the order it appears.", where: "Your accounting onboarding project board", when: "Throughout the onboarding process", why: "Each stage prepares your account for the next.", how: "Work through the project board from top to bottom.", warning: "", notes: "" },
-  { ruleName: "Use the demo account for practice", who: "Anyone learning the new system", what: "Practise workflows in the demo account before going live.", where: "The demo environment provided by Street", when: "Before your go-live date", why: "This protects your live data while your team gets comfortable.", how: "Ask your trainer for demo access if you don't have it yet.", warning: "Using the live account too early may mean part of your setup needs to be reset, which could delay your go-live.", notes: "" }
+  { ruleName: "Use the demo account for practice", who: "Anyone learning the new system", what: "Practise workflows in the demo account before going live.", where: "The demo environment provided by Street", when: "Before your go-live date", why: "This protects your live data while your team gets comfortable.", how: "Ask your trainer for demo access if you don't have it yet.", warning: "Using the live account too early may mean part of your setup needs to be reset, which could delay your go-live.", notes: "" },
+  { ruleName: "Reconcile daily during onboarding", who: "Your finance lead", what: "Check bank feeds and reconciliations each day.", where: "The accounting dashboard", when: "Daily until go-live", why: "Small issues are far easier to fix early.", how: "Use the daily reconciliation checklist your trainer shares.", warning: "", notes: "This becomes weekly once you're fully live." }
 ];
 
 /* ---------- Utility: escaping ---------- */
@@ -565,28 +599,35 @@ const FIELD_ORDER = ['who', 'what', 'where', 'when', 'why', 'how'];
 const FIELD_LABELS = { who: 'Who', what: 'What', where: 'Where', when: 'When', why: 'Why', how: 'How' };
 
 /* ============================================================================
- * PAGE BUILDING
+ * PAGE BUILDING (landscape layouts)
  * ============================================================================ */
 
 function buildCoverPageHtml() {
   return (
-    '<div class="cover-word">STREET<span>.</span></div>' +
-    '<div class="eyebrow" style="margin-top:16px;">CLIENT ACCOUNTING ONBOARDING</div>' +
-    '<h1 class="page-title">Rules &amp; Conditions</h1>' +
-    '<p class="lede">Please follow these rules throughout your accounting onboarding. They are designed to protect your live accounting data, keep your setup accurate and help your go-live run smoothly.</p>' +
-    '<div class="cover-questions">' +
-      ['Who','What','Where','When','Why','How'].map(function (q) {
-        return '<div class="cover-q"><div class="letter">' + q[0] + '</div><div class="label">' + q + '</div></div>';
-      }).join('') +
-    '</div>' +
-    '<div class="cover-callout">Please share this guide with everyone involved in your accounting onboarding.</div>' +
-    '<div class="cover-cta">Tap or press Next to begin &rarr;</div>'
+    '<div class="cover-flex">' +
+      '<div class="cover-left">' +
+        '<div class="cover-word">STREET<span>.</span></div>' +
+        '<div class="eyebrow" style="margin-top:16px;">CLIENT ACCOUNTING ONBOARDING</div>' +
+        '<h1 class="page-title">Rules &amp; Conditions</h1>' +
+        '<p class="lede">Please follow these rules throughout your accounting onboarding. They are designed to protect your live accounting data, keep your setup accurate and help your go-live run smoothly.</p>' +
+        '<div class="cover-callout">Please share this guide with everyone involved in your accounting onboarding.</div>' +
+      '</div>' +
+      '<div class="cover-right">' +
+        '<div class="cover-questions">' +
+          ['Who','What','Where','When','Why','How'].map(function (q) {
+            return '<div class="cover-q"><div class="letter">' + q[0] + '</div><div class="label">' + q + '</div></div>';
+          }).join('') +
+        '</div>' +
+        '<div class="cover-cta">Tap or press Next to begin &rarr;</div>' +
+      '</div>' +
+    '</div>'
   );
 }
 
-function buildRuleCardHtml(rule, index, useSingleColumn) {
+function buildRuleCardHtml(rule, index, useSingleColumn, isSolo) {
   const fields = FIELD_ORDER.filter(function (f) { return rule[f]; });
   const gridClass = useSingleColumn ? 'rule-grid single-col' : 'rule-grid';
+  const cardClass = isSolo ? 'rule-card rule-card-solo' : 'rule-card';
 
   const fieldsHtml = fields.map(function (f) {
     return (
@@ -601,7 +642,7 @@ function buildRuleCardHtml(rule, index, useSingleColumn) {
   const warningHtml = rule.warning ? '<div class="rule-warning">' + ICONS.warning + '<span>' + escapeHtml(rule.warning) + '</span></div>' : '';
 
   return (
-    '<article class="rule-card">' +
+    '<article class="' + cardClass + '">' +
       '<div class="rule-head"><div class="rule-badge">' + (index + 1) + '</div><div class="rule-name">' + escapeHtml(rule.ruleName) + '</div></div>' +
       '<div class="' + gridClass + '">' + fieldsHtml + '</div>' +
       notesHtml + warningHtml +
@@ -634,20 +675,26 @@ function buildReminderPageHtml(rules) {
   return (
     '<div class="eyebrow">BEFORE YOU CONTINUE</div>' +
     '<h1 class="page-title">A few important reminders</h1>' +
-    '<div class="reminder-list">' + itemsHtml + '</div>' +
-    '<div class="reminder-warning">' + ICONS.warning + ' Using accounting early may require your setup to be corrected or reset and could delay your go-live.</div>' +
-    '<div class="reminder-stop">When in doubt, stop and ask the Street team before making changes in your live account.</div>'
+    '<div class="reminder-body">' +
+      '<div class="reminder-list">' + itemsHtml + '</div>' +
+      '<div class="reminder-side">' +
+        '<div class="reminder-warning">' + ICONS.warning + ' Using accounting early may require your setup to be corrected or reset and could delay your go-live.</div>' +
+        '<div class="reminder-stop">When in doubt, stop and ask the Street team before making changes in your live account.</div>' +
+      '</div>' +
+    '</div>'
   );
 }
 
 function buildFinalPageHtml() {
   return (
-    '<div class="final-wrap">' +
-      '<div class="eyebrow">FINAL PAGE</div>' +
-      '<h1 class="page-title">Need help?</h1>' +
-      '<p class="final-copy">Our Accounting Onboarding Team is available throughout your project. Please raise questions through your Rocketlane project board and tag the Street team so we are notified.</p>' +
-      '<p class="final-copy">Following these steps will help us keep your data accurate and make your move to Street accounting as smooth as possible.</p>' +
-      '<div class="final-closing">' +
+    '<div class="final-flex">' +
+      '<div class="final-left">' +
+        '<div class="eyebrow">FINAL PAGE</div>' +
+        '<h1 class="page-title">Need help?</h1>' +
+        '<p class="final-copy">Our Accounting Onboarding Team is available throughout your project. Please raise questions through your Rocketlane project board and tag the Street team so we are notified.</p>' +
+        '<p class="final-copy">Following these steps will help us keep your data accurate and make your move to Street accounting as smooth as possible.</p>' +
+      '</div>' +
+      '<div class="final-right">' +
         '<div class="word">STREET.</div>' +
         '<button class="restart-btn" id="restart-btn" type="button">Restart guide</button>' +
       '</div>' +
@@ -656,48 +703,53 @@ function buildFinalPageHtml() {
 }
 
 /* ============================================================================
- * PAGINATION – measure actual rendered card height to decide how many
- * rule cards fit per page, rather than assuming a fixed count.
+ * PAGINATION – cards are laid out 2-up (landscape gives us the width for it).
+ * We measure real rendered heights in PAIRS (a "row" of the grid) so we know
+ * exactly how many rows fit the fixed 1080x600 stage before starting a new
+ * page — never assuming every rule takes the same amount of space.
  * ============================================================================ */
-function paginateRules(rules, availableHeight, columnWidth) {
+function paginateRules(rules, availableHeight, gridWidth) {
   const rig = document.getElementById('measure-rig');
-  rig.style.width = columnWidth + 'px';
-  rig.innerHTML = '';
+  const GAP_X = 18;
+  const GAP_Y = 12;
+  const cardWidth = (gridWidth - GAP_X) / 2;
+  rig.style.width = cardWidth + 'px';
 
-  const pages = [];
-  let currentPageCards = [];
-  let currentHeight = 0;
-  const GAP = 12;
-
-  rules.forEach(function (rule, i) {
-    const wrapper = document.createElement('div');
-    // Try two-column first; fall back to single column if the longest
-    // field looks like it will wrap heavily (rough heuristic on text length).
+  function measure(rule, index) {
     const longestField = FIELD_ORDER.reduce(function (max, f) {
       return rule[f] && rule[f].length > max ? rule[f].length : max;
     }, 0);
-    const singleCol = longestField > 70;
-    wrapper.innerHTML = buildRuleCardHtml(rule, i, singleCol);
+    const singleCol = longestField > 110;
+    const wrapper = document.createElement('div');
+    wrapper.innerHTML = buildRuleCardHtml(rule, index, singleCol, false);
     rig.appendChild(wrapper);
+    const height = wrapper.offsetHeight; // offsetHeight ignores CSS transforms, so this is always a true 1:1 measurement
+    rig.removeChild(wrapper);
+    return { rule: rule, index: index, singleCol: singleCol, height: height };
+  }
 
-    const cardHeight = wrapper.getBoundingClientRect().height;
-    const additional = currentPageCards.length === 0 ? cardHeight : cardHeight + GAP;
+  const measured = rules.map(measure);
+  const pages = [];
+  let currentPage = [];
+  let currentHeight = 0;
 
-    if (currentHeight + additional > availableHeight && currentPageCards.length > 0) {
-      pages.push(currentPageCards);
-      currentPageCards = [];
+  for (let i = 0; i < measured.length; i += 2) {
+    const a = measured[i];
+    const b = measured[i + 1];
+    const rowHeight = Math.max(a.height, b ? b.height : 0);
+    const additional = currentPage.length === 0 ? rowHeight : rowHeight + GAP_Y;
+
+    if (currentHeight + additional > availableHeight && currentPage.length > 0) {
+      pages.push(currentPage);
+      currentPage = [];
       currentHeight = 0;
     }
 
-    currentPageCards.push({ rule: rule, index: i, singleCol: singleCol });
-    currentHeight += (currentPageCards.length === 1 ? cardHeight : cardHeight + GAP);
+    currentPage.push(b ? [a, b] : [a]);
+    currentHeight += (currentPage.length === 1 ? rowHeight : rowHeight + GAP_Y);
+  }
 
-    rig.removeChild(wrapper);
-  });
-
-  if (currentPageCards.length) pages.push(currentPageCards);
-  rig.innerHTML = '';
-
+  if (currentPage.length) pages.push(currentPage);
   return pages;
 }
 
@@ -772,7 +824,39 @@ function showError(message) {
   document.getElementById('error-copy').textContent = message;
 }
 
+/* ============================================================================
+ * STAGE SCALING
+ * The shell resizes to fit the viewport/iframe while keeping the 1080:600
+ * ratio; the fixed-size stage is then CSS-scaled as a single block to match.
+ * This keeps every page pixel-perfect regardless of embed size, and means
+ * pagination measurements never need to account for the device at all.
+ * ============================================================================ */
+function fitShell() {
+  const shell = document.getElementById('shell');
+  const stage = document.getElementById('stage');
+  const ratio = CONFIG.stageWidth / CONFIG.stageHeight;
+
+  const availW = window.innerWidth;
+  const availH = window.innerHeight;
+
+  let w = Math.min(availW, CONFIG.stageWidth);
+  let h = w / ratio;
+
+  if (h > Math.min(availH, CONFIG.stageHeight)) {
+    h = Math.min(availH, CONFIG.stageHeight);
+    w = h * ratio;
+  }
+
+  shell.style.width = w + 'px';
+  shell.style.height = h + 'px';
+  stage.style.transform = 'scale(' + (w / CONFIG.stageWidth) + ')';
+}
+
 function init() {
+  fitShell();
+  window.addEventListener('resize', fitShell);
+  window.addEventListener('orientationchange', fitShell);
+
   attachNav();
   document.getElementById('retry-btn').addEventListener('click', function () {
     document.getElementById('state-error').classList.add('hidden');
@@ -790,19 +874,31 @@ function boot() {
         return;
       }
 
-      const viewport = document.getElementById('viewport');
-      const footerHeight = document.getElementById('footer').offsetHeight || 76;
-      const pagePadding = 60; // approximate top+bottom padding of a .page
-      const availableHeight = viewport.clientHeight - pagePadding;
-      const columnWidth = viewport.clientWidth - 60;
+      // All measurements use the FIXED stage dimensions (1080x600), never
+      // the device viewport, since the stage is scaled as a block afterwards.
+      const footerHeight = 84;
+      const pagePaddingTop = 30;
+      const pagePaddingBottom = 12;
+      const eyebrowRow = 30;
+      const availableHeight = CONFIG.stageHeight - footerHeight - pagePaddingTop - pagePaddingBottom - eyebrowRow;
+      const gridWidth = CONFIG.stageWidth - (46 * 2); // matches .page horizontal padding
 
-      const rulePagesOfCards = paginateRules(rules, availableHeight, columnWidth);
+      const rulePagesOfRows = paginateRules(rules, availableHeight, gridWidth);
 
       PAGES = [{ type: 'cover', html: buildCoverPageHtml() }];
 
-      rulePagesOfCards.forEach(function (cards) {
-        const cardsHtml = cards.map(function (c) { return buildRuleCardHtml(c.rule, c.index, c.singleCol); }).join('');
-        PAGES.push({ type: 'rules', html: '<div class="eyebrow">RULE ' + (cards[0].index + 1) + ' of ' + rules.length + '</div><div class="rules-scroll">' + cardsHtml + '</div>' });
+      rulePagesOfRows.forEach(function (rows) {
+        const firstIndex = rows[0][0].index;
+        const cardsHtml = rows.map(function (row) {
+          return row.map(function (item, colIdx) {
+            const isSolo = row.length === 1;
+            return buildRuleCardHtml(item.rule, item.index, item.singleCol, isSolo);
+          }).join('');
+        }).join('');
+        PAGES.push({
+          type: 'rules',
+          html: '<div class="eyebrow">RULE ' + (firstIndex + 1) + ' of ' + rules.length + '</div><div class="rules-grid">' + cardsHtml + '</div>'
+        });
       });
 
       PAGES.push({ type: 'reminder', html: buildReminderPageHtml(rules) });
