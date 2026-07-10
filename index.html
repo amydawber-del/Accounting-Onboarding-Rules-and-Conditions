@@ -734,6 +734,37 @@ function buildFinalPageHtml() {
   );
 }
 
+/**
+ * Measures the ACTUAL rendered height of the footer and the "RULE x of y"
+ * eyebrow row, by cloning real markup into the (unscaled, off-screen)
+ * measuring rig. Far more reliable than hard-coded pixel guesses, which is
+ * what previously left just slightly too little room for card content and
+ * caused cropping at the bottom of the page.
+ */
+function measureChromeHeights() {
+  const rig = document.getElementById('measure-rig');
+  rig.innerHTML = '';
+  rig.style.width = CONFIG.stageWidth + 'px';
+
+  const footerClone = document.getElementById('footer').cloneNode(true);
+  footerClone.classList.remove('hidden');
+  footerClone.style.position = 'static';
+  rig.appendChild(footerClone);
+  const footerHeight = footerClone.offsetHeight;
+  rig.removeChild(footerClone);
+
+  const eyebrowClone = document.createElement('div');
+  eyebrowClone.className = 'eyebrow';
+  eyebrowClone.textContent = 'RULE 99 OF 99';
+  rig.appendChild(eyebrowClone);
+  const eyebrowStyle = getComputedStyle(eyebrowClone);
+  const eyebrowHeight = eyebrowClone.offsetHeight + parseFloat(eyebrowStyle.marginBottom || 0);
+  rig.removeChild(eyebrowClone);
+
+  rig.innerHTML = '';
+  return { footerHeight: footerHeight, eyebrowHeight: eyebrowHeight };
+}
+
 /* ============================================================================
  * PAGINATION – cards are laid out 2-up (landscape gives us the width for it).
  * We measure real rendered heights in PAIRS (a "row" of the grid) so we know
@@ -899,13 +930,16 @@ function boot() {
         return;
       }
 
-      // All measurements use the FIXED stage dimensions (1080x600), never
-      // the device viewport, since the stage is scaled as a block afterwards.
-      const footerHeight = 84;
+      // Measure the REAL rendered chrome (footer + the "RULE x of y" header
+      // row) instead of guessing pixel values — guesses were a touch too
+      // small, which is why cards/warnings were getting cropped at the
+      // bottom of the page. A small safety margin is added on top for
+      // font-rendering variance between browsers.
+      const chrome = measureChromeHeights();
       const pagePaddingTop = 30;
       const pagePaddingBottom = 12;
-      const eyebrowRow = 30;
-      const availableHeight = CONFIG.stageHeight - footerHeight - pagePaddingTop - pagePaddingBottom - eyebrowRow;
+      const SAFETY_MARGIN = 8;
+      const availableHeight = CONFIG.stageHeight - chrome.footerHeight - pagePaddingTop - pagePaddingBottom - chrome.eyebrowHeight - SAFETY_MARGIN;
       const gridWidth = CONFIG.stageWidth - (46 * 2); // matches .page horizontal padding
 
       const rulePagesOfRows = paginateRules(rules, availableHeight, gridWidth);
