@@ -29,6 +29,13 @@
 
   * { box-sizing: border-box; }
 
+  /* Every inline icon gets this baseline size by default. The more specific
+     rules below (.rule-field .ic, .rule-warning .ic, .reminder-item .ic)
+     override it where a slightly different size is wanted — but nothing
+     should ever be left unsized, since an SVG with no explicit dimensions
+     defaults to a huge 300x150px box in most browsers. */
+  .ic { width: 14px; height: 14px; flex: none; display: block; }
+
   html, body {
     width: 100%;
     height: 100%;
