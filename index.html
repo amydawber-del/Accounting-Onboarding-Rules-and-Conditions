@@ -775,41 +775,70 @@ function paginateRules(rules, availableHeight, gridWidth) {
   const rig = document.getElementById('measure-rig');
   const GAP_X = 18;
   const GAP_Y = 12;
-  const cardWidth = (gridWidth - GAP_X) / 2;
-  rig.style.width = cardWidth + 'px';
+  const halfWidth = (gridWidth - GAP_X) / 2;
 
-  function measure(rule, index) {
+  function measureAt(rule, index, width) {
     const longestField = FIELD_ORDER.reduce(function (max, f) {
       return rule[f] && rule[f].length > max ? rule[f].length : max;
     }, 0);
     const singleCol = longestField > 110;
+    rig.style.width = width + 'px';
     const wrapper = document.createElement('div');
-    wrapper.innerHTML = buildRuleCardHtml(rule, index, singleCol, false);
+    wrapper.innerHTML = buildRuleCardHtml(rule, index, singleCol, width !== halfWidth);
     rig.appendChild(wrapper);
     const height = wrapper.offsetHeight; // offsetHeight ignores CSS transforms, so this is always a true 1:1 measurement
     rig.removeChild(wrapper);
     return { rule: rule, index: index, singleCol: singleCol, height: height };
   }
 
-  const measured = rules.map(measure);
+  // Measure every rule at BOTH half-width (its normal two-up slot) and full
+  // width (spanning the whole row solo). A card that's unusually tall — e.g.
+  // one with both notes and a warning — is often meaningfully SHORTER at
+  // full width, since its fields get much more room per line and wrap far
+  // less. Rather than force every rule into a rigid pair no matter how tall
+  // it is, we let genuinely tall rules go full-width solo instead.
+  const items = rules.map(function (rule, index) {
+    return {
+      rule: rule,
+      index: index,
+      half: measureAt(rule, index, halfWidth),
+      full: measureAt(rule, index, gridWidth)
+    };
+  });
+
   const pages = [];
   let currentPage = [];
   let currentHeight = 0;
 
-  for (let i = 0; i < measured.length; i += 2) {
-    const a = measured[i];
-    const b = measured[i + 1];
-    const rowHeight = Math.max(a.height, b ? b.height : 0);
+  function pushRow(row, rowHeight) {
     const additional = currentPage.length === 0 ? rowHeight : rowHeight + GAP_Y;
-
     if (currentHeight + additional > availableHeight && currentPage.length > 0) {
       pages.push(currentPage);
       currentPage = [];
       currentHeight = 0;
     }
-
-    currentPage.push(b ? [a, b] : [a]);
+    currentPage.push(row);
     currentHeight += (currentPage.length === 1 ? rowHeight : rowHeight + GAP_Y);
+  }
+
+  let i = 0;
+  while (i < items.length) {
+    const a = items[i];
+    const b = items[i + 1];
+
+    if (b) {
+      const pairHeight = Math.max(a.half.height, b.half.height);
+      if (pairHeight <= availableHeight) {
+        pushRow([a.half, b.half], pairHeight);
+        i += 2;
+        continue;
+      }
+    }
+
+    // Either there's no partner left, or pairing would overflow the page
+    // outright — give this one rule the full row width to itself instead.
+    pushRow([a.full], a.full.height);
+    i += 1;
   }
 
   if (currentPage.length) pages.push(currentPage);
